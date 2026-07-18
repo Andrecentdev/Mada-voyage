@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réservation — Mada-Brousse 2.0</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/vendor/bootstrap-5.3.8-dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome-free-6.5.1-web/css/all.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-bg">
+
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand"><img src="/images/logo.svg" alt="" class="brand-logo" width="34" height="34">Mada<span class="dot">-</span>Brousse</a>
+    <div class="nav-links">
+      <a href="/">Accueil</a>
+      <a href="/reservation">Réserver</a>
+      <a href="/sieges">Sièges</a>
+      <a href="/paiement">Paiement</a>
+      <a href="/confirmation">Confirmation</a>
+      <a href="/mes-reservations">Mes réservations</a>
+      <a href="/admin-login">Admin</a>
+    </div>
+    <div class="nav-tools">
+      <select class="lang-select" id="mb-lang-select">
+        <option value="fr">FR</option>
+        <option value="mg">MG</option>
+        <option value="en">EN</option>
+      </select>
+      <button class="icon-btn" id="mb-theme-toggle" title="Mode sombre">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<section>
+  <div class="container" style="max-width:760px;">
+    <h1>Réserver votre trajet</h1>
+    <div class="card trip-recap-card" id="trip-recap-card" style="display:none;">
+      <img id="trip-recap-img" alt="" class="trip-recap-img">
+      <div>
+        <p class="muted" id="trip-recap" style="margin:0 0 4px;"></p>
+        <p class="muted" id="trip-recap-driver" style="margin:0; font-size:.85rem;"></p>
+      </div>
+    </div>
+    <p class="muted" id="trip-recap-fallback"></p>
+    <div class="card mt-2">
+      <form id="res-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="r-name">Nom complet</label>
+            <input type="text" id="r-name" required>
+          </div>
+          <div class="form-group">
+            <label for="r-phone">Téléphone</label>
+            <input type="tel" id="r-phone" placeholder="034 00 000 00" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="r-email">Email</label>
+          <input type="email" id="r-email" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="r-count">Nombre de places</label>
+            <select id="r-count">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="r-luggage">Bagages supplémentaires (5000 Ar / unité)</label>
+            <input type="number" id="r-luggage" min="0" value="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="r-promo">Code promo (optionnel)</label>
+          <input type="text" id="r-promo" placeholder="MADA10">
+          <p class="help-text">Essayez <strong>MADA10</strong> (-10%) ou <strong>BROUSSE2025</strong> (-5000 Ar)</p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Choisir les sièges</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<div id="mb-footer"></div>
+
+<script src="/vendor/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  MB.initCommon();
+
+  const params = new URLSearchParams(location.search);
+  let tripId = params.get('trip');
+
+  MB.fetchTrips().then(trips => {
+    let trip = tripId ? trips.find(t => t.id === tripId) : null;
+    if (!trip) { trip = trips[0]; tripId = trip.id; }
+
+    document.getElementById('trip-recap').innerHTML =
+      `<strong>${trip.departure} &rarr; ${trip.destination}</strong> — départ ${trip.departure_time}, durée ${trip.duration} — ${MB.formatAr(trip.price)} / place`;
+
+    const draft = MB.get(MB.KEYS.DRAFT, null);
+    if (draft && draft.tripId === tripId) {
+      document.getElementById('r-name').value = draft.name || '';
+      document.getElementById('r-phone').value = draft.phone || '';
+      document.getElementById('r-email').value = draft.email || '';
+      document.getElementById('r-count').value = draft.count || 1;
+      document.getElementById('r-luggage').value = draft.luggage || 0;
+      document.getElementById('r-promo').value = draft.promo || '';
+    }
+
+    document.getElementById('res-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const draft = {
+        tripId,
+        name: document.getElementById('r-name').value.trim(),
+        phone: document.getElementById('r-phone').value.trim(),
+        email: document.getElementById('r-email').value.trim(),
+        count: parseInt(document.getElementById('r-count').value, 10),
+        luggage: parseInt(document.getElementById('r-luggage').value, 10) || 0,
+        promo: document.getElementById('r-promo').value.trim()
+      };
+      MB.set(MB.KEYS.DRAFT, draft);
+      const prevSeats = MB.get(MB.KEYS.SEATS, []);
+      if (prevSeats.length !== draft.count) MB.set(MB.KEYS.SEATS, []);
+      location.href = '/sieges';
+    });
+  });
+
+  const currentPath = window.location.pathname;
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    if (link.getAttribute('href') === currentPath) link.classList.add('active');
+  });
+</script>
+</body>
+</html>

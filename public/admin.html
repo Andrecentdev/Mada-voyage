@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau de bord — MADA-VOYAGE</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/vendor/bootstrap-5.3.8-dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome-free-6.5.1-web/css/all.min.css">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body data-theme-root data-no-chat>
+
+<div class="admin-shell">
+  <aside class="admin-side">
+    <div class="brand"><img src="/images/logo.svg" alt="" class="brand-logo" width="30" height="30">MADA<span class="dot">-</span>VOYAGE</div>
+    <a href="#" class="active" data-tab="dashboard">📊 Tableau de bord</a>
+    <a href="#" data-tab="reservations">🎟️ Réservations</a>
+    <a href="#" data-tab="trips">🗺️ Trajets</a>
+    <a href="#" data-tab="drivers">🚌 Chauffeurs</a>
+    <a href="#" data-tab="clients">👤 Clients</a>
+    <a href="#" data-tab="promos">🏷️ Codes promo</a>
+    <a href="#" data-tab="reviews">⭐ Avis</a>
+    <a href="/admin-login" id="logout-link" style="margin-top:20px; border-top:1px solid rgba(255,255,255,.2); padding-top:14px;">🚪 Déconnexion</a>
+  </aside>
+
+  <main class="admin-main">
+    <div class="flex-between mt-0" style="margin-bottom:20px;">
+      <h1 class="mt-0">Tableau de bord</h1>
+      <button class="icon-btn" id="mb-theme-toggle-admin" title="Mode sombre">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+      </button>
+    </div>
+
+    <!-- Contenu des onglets (inchangé) -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="val" id="stat-res">0</div><div class="lbl">Réservations</div></div>
+        <div class="stat-card"><div class="val" id="stat-trips">0</div><div class="lbl">Trajets actifs</div></div>
+        <div class="stat-card"><div class="val" id="stat-revenue">0 Ar</div><div class="lbl">Revenus</div></div>
+        <div class="stat-card"><div class="val" id="stat-clients">0</div><div class="lbl">Clients uniques</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="card">
+          <h3 class="mt-0">Ventes par mois</h3>
+          <canvas id="chart-sales" height="140"></canvas>
+        </div>
+        <div class="card">
+          <h3 class="mt-0">Modes de paiement</h3>
+          <canvas id="chart-payments" height="140"></canvas>
+        </div>
+        <div class="card">
+          <h3 class="mt-0">Statut des réservations</h3>
+          <canvas id="chart-status" height="140"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-reservations">
+      <div class="card">
+        <div class="toolbar">
+          <select id="filter-status">
+            <option value="">Tous les statuts</option>
+            <option value="en_attente">En attente de validation</option>
+            <option value="confirmee">Confirmée</option>
+            <option value="rejetee">Rejetée</option>
+            <option value="annulee">Annulée</option>
+          </select>
+          <input type="text" id="filter-search" placeholder="Rechercher client, trajet, ID...">
+          <button class="btn btn-secondary btn-sm" id="export-csv">⬇️ Exporter CSV</button>
+        </div>
+        <p class="help-text">Une réservation reste <strong>en attente</strong> jusqu'à validation ici : le client ne peut télécharger/imprimer son billet qu'après votre validation.</p>
+        <div style="overflow-x:auto;">
+          <table id="res-table">
+            <thead><tr><th>ID</th><th>Client</th><th>Trajet</th><th>Sièges</th><th>Total</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-trips">
+      <div class="card mt-2">
+        <h3 class="mt-0">Ajouter un trajet</h3>
+        <form id="trip-form" enctype="multipart/form-data">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="t-departure">Départ</label>
+              <input type="text" id="t-departure" placeholder="Antananarivo" required>
+            </div>
+            <div class="form-group">
+              <label for="t-destination">Destination</label>
+              <input type="text" id="t-destination" placeholder="Toamasina" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="t-time">Heure de départ</label>
+              <input type="time" id="t-time" required>
+            </div>
+            <div class="form-group">
+              <label for="t-duration">Durée</label>
+              <input type="text" id="t-duration" placeholder="6h">
+            </div>
+            <div class="form-group">
+              <label for="t-price">Prix (Ar)</label>
+              <input type="number" id="t-price" min="0" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="t-driver">Chauffeur</label>
+            <select id="t-driver"><option value="">— Sélectionner —</option></select>
+          </div>
+          <div class="form-group">
+            <label>Photo du trajet</label>
+            <p class="help-text mt-0">Choisissez une photo pré-chargée, ou importez la vôtre (prioritaire) ci-dessous.</p>
+            <div class="image-pick-grid" id="t-image-grid"></div>
+            <input type="hidden" id="t-image-url">
+            <input type="file" id="t-photo" accept="image/*" class="mt-2">
+          </div>
+          <button type="submit" class="btn btn-primary">Ajouter le trajet</button>
+        </form>
+      </div>
+      <div class="card mt-2">
+        <div style="overflow-x:auto;">
+          <table id="trips-table">
+            <thead><tr><th>Photo</th><th>Trajet</th><th>Heure</th><th>Prix</th><th>Chauffeur</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-drivers">
+      <div class="card mt-2">
+        <h3 class="mt-0">Ajouter un chauffeur</h3>
+        <form id="driver-form" enctype="multipart/form-data">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="d-name">Nom</label>
+              <input type="text" id="d-name" placeholder="Rakoto J." required>
+            </div>
+            <div class="form-group">
+              <label for="d-phone">Téléphone</label>
+              <input type="tel" id="d-phone" placeholder="034 00 000 00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="d-route">Trajet habituel</label>
+            <input type="text" id="d-route" placeholder="Tana → Toamasina">
+          </div>
+          <div class="form-group">
+            <label for="d-photo">Photo (facultatif)</label>
+            <input type="file" id="d-photo" accept="image/*">
+          </div>
+          <button type="submit" class="btn btn-primary">Ajouter le chauffeur</button>
+        </form>
+      </div>
+      <div class="card mt-2">
+        <table>
+          <thead><tr><th>Photo</th><th>Nom</th><th>Trajet habituel</th><th>Trajets effectués</th><th>Note</th></tr></thead>
+          <tbody id="drivers-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-clients">
+      <div class="card mt-2">
+        <h3 class="mt-0">Inscription rapide</h3>
+        <p class="muted">Pour enregistrer un client qui réserve par téléphone ou au guichet.</p>
+        <form id="customer-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="c-name">Nom</label>
+              <input type="text" id="c-name" required>
+            </div>
+            <div class="form-group">
+              <label for="c-phone">Numéro de téléphone</label>
+              <input type="tel" id="c-phone" placeholder="034 00 000 00" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Enregistrer le client</button>
+        </form>
+      </div>
+      <div class="card mt-2">
+        <table>
+          <thead><tr><th>Nom</th><th>Téléphone</th><th>Ajouté le</th></tr></thead>
+          <tbody id="customers-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-promos">
+      <div class="card">
+        <table>
+          <thead><tr><th>Code</th><th>Type</th><th>Valeur</th><th>Statut</th></tr></thead>
+          <tbody id="promo-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-reviews">
+      <div class="card">
+        <table>
+          <thead><tr><th>Réservation</th><th>Client</th><th>Note</th></tr></thead>
+          <tbody id="reviews-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/vendor/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  if (localStorage.getItem(MB.KEYS.ADMIN) !== 'true' || !localStorage.getItem(MB.KEYS.ADMIN_TOKEN)) {
+    location.href = '/admin-login';
+  }
+
+  function handleSessionExpired() {
+    alert('Votre session administrateur a expiré. Merci de vous reconnecter.');
+    localStorage.removeItem(MB.KEYS.ADMIN);
+    localStorage.removeItem(MB.KEYS.ADMIN_TOKEN);
+    location.href = '/admin-login';
+  }
+
+  MB.applyTheme();
+  document.getElementById('mb-theme-toggle-admin').addEventListener('click', MB.toggleTheme);
+  document.getElementById('logout-link').addEventListener('click', e => {
+    e.preventDefault();
+    MB.adminLogout().then(() => location.href = '/admin-login');
+  });
+
+  // Navigation par onglets
+  document.querySelectorAll('.admin-side a[data-tab]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelectorAll('.admin-side a[data-tab]').forEach(a => a.classList.remove('active'));
+      link.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + link.dataset.tab).classList.add('active');
+    });
+  });
+
+  MB.fetchAdminReservations().then(reservations => {
+    const activeRes = reservations.filter(r => r.status === 'confirmee');
+    document.getElementById('stat-res').textContent = reservations.length;
+    document.getElementById('stat-trips').textContent = 5;
+    document.getElementById('stat-revenue').textContent = MB.formatAr(activeRes.reduce((s, r) => s + Number(r.total), 0));
+    document.getElementById('stat-clients').textContent = new Set(reservations.map(r => r.customer_email)).size;
+
+    const monthLabels = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+    const salesByMonth = new Array(12).fill(0);
+    reservations.forEach(r => { const m = new Date(r.created_at).getMonth(); salesByMonth[m] += Number(r.total); });
+    new Chart(document.getElementById('chart-sales'), {
+      type: 'bar',
+      data: { labels: monthLabels, datasets: [{ label: 'Revenus (Ar)', data: salesByMonth, backgroundColor: '#4a7c2e' }] },
+      options: { plugins: { legend: { display: false } } }
+    });
+
+    const paymentCounts = {};
+    reservations.forEach(r => { paymentCounts[r.payment_method] = (paymentCounts[r.payment_method] || 0) + 1; });
+    new Chart(document.getElementById('chart-payments'), {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(paymentCounts),
+        datasets: [{ data: Object.values(paymentCounts), backgroundColor: ['#b5502e','#4a7c2e','#6b9e3a','#d97a4f'] }]
+      }
+    });
+
+    const statusLabels = { en_attente: 'En attente', confirmee: 'Confirmée', rejetee: 'Rejetée', annulee: 'Annulée' };
+    const statusBadgeClass = { en_attente: 'badge-pending', confirmee: 'badge-confirmed', rejetee: 'badge-cancelled', annulee: 'badge-cancelled' };
+    const statusCounts = {};
+    reservations.forEach(r => { statusCounts[r.status] = (statusCounts[r.status] || 0) + 1; });
+    new Chart(document.getElementById('chart-status'), {
+      type: 'pie',
+      data: {
+        labels: Object.keys(statusCounts).map(s => statusLabels[s] || s),
+        datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#d97a4f','#4a7c2e','#a83232','#6b9e3a'] }]
+      }
+    });
+
+    function renderTable(filtered) {
+      const tbody = document.querySelector('#res-table tbody');
+      tbody.innerHTML = filtered.map(r => `
+        <tr>
+          <td>${r.id}</td><td>${r.customer_name}</td><td>${r.trip_id}</td>
+          <td>${MB.seatLabels(r.selected_seats)}</td><td>${MB.formatAr(r.total)}</td>
+          <td><span class="badge ${statusBadgeClass[r.status] || ''}">${statusLabels[r.status] || r.status}</span></td>
+          <td>${r.status === 'en_attente'
+            ? `<button class="btn btn-primary btn-sm" data-validate="${r.id}">✔️ Valider</button>
+               <button class="btn btn-danger btn-sm" data-reject="${r.id}">✖️ Rejeter</button>`
+            : '—'}</td>
+        </tr>`).join('') || '<tr><td colspan="7" class="muted">Aucun résultat</td></tr>';
+
+      tbody.querySelectorAll('[data-validate]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          MB.validateReservation(btn.dataset.validate)
+            .then(() => MB.fetchAdminReservations())
+            .then(fresh => { reservations = fresh; renderTable(fresh); })
+            .catch(err => alert(err.message));
+        });
+      });
+      tbody.querySelectorAll('[data-reject]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!confirm('Rejeter cette réservation ? Les sièges seront libérés.')) return;
+          MB.rejectReservation(btn.dataset.reject)
+            .then(() => MB.fetchAdminReservations())
+            .then(fresh => { reservations = fresh; renderTable(fresh); })
+            .catch(err => alert(err.message));
+        });
+      });
+    }
+    renderTable(reservations);
+
+    document.getElementById('filter-status').addEventListener('change', () => {
+      const status = document.getElementById('filter-status').value;
+      const filtered = status ? reservations.filter(r => r.status === status) : reservations;
+      renderTable(filtered);
+    });
+    document.getElementById('filter-search').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = reservations.filter(r => `${r.id} ${r.customer_name} ${r.trip_id}`.toLowerCase().includes(q));
+      renderTable(filtered);
+    });
+    document.getElementById('export-csv').addEventListener('click', () => {
+      const rows = [['ID','Client','Trajet','Sièges','Total','Statut']];
+      reservations.forEach(r => rows.push([r.id, r.customer_name, r.trip_id, MB.seatLabels(r.selected_seats), r.total, statusLabels[r.status] || r.status]));
+      const csv = rows.map(row => row.map(v => `"${v}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'reservations.csv';
+      a.click();
+    });
+
+    MB.fetchPromos().then(promos => {
+      document.getElementById('promo-table-body').innerHTML = promos.map(p => `
+        <tr><td>${p.code}</td><td>${p.type==='percent'?'Pourcentage':'Fixe'}</td><td>${p.type==='percent'?p.value+'%':MB.formatAr(p.value)}</td><td><span class="badge badge-confirmed">Actif</span></td></tr>
+      `).join('');
+    });
+
+    const reviewed = reservations.filter(r => r.review);
+    document.getElementById('reviews-table-body').innerHTML = reviewed.length
+      ? reviewed.map(r => `<tr><td>${r.id}</td><td>${r.customer_name}</td><td>${'⭐'.repeat(r.review)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="muted">Aucun avis</td></tr>';
+  }).catch(err => { if (err.message === 'SESSION_EXPIREE') handleSessionExpired(); });
+
+  // ---------- Onglet Trajets ----------
+  let selectedImageUrl = '';
+  function loadTrips() {
+    Promise.all([MB.fetchTrips(), MB.fetchDrivers()]).then(([trips, drivers]) => {
+      document.getElementById('stat-trips').textContent = trips.length;
+      const tbody = document.querySelector('#trips-table tbody');
+      tbody.innerHTML = trips.map(t => `
+        <tr>
+          <td>${t.image_url ? `<img class="trip-thumb" src="${t.image_url}" alt="">` : '—'}</td>
+          <td>${t.departure} → ${t.destination}</td>
+          <td>${t.departure_time || ''}</td>
+          <td>${MB.formatAr(t.price)}</td>
+          <td>${t.driver || '—'}</td>
+          <td><button type="button" class="btn btn-danger btn-sm" data-deactivate="${t.id}">Désactiver</button></td>
+        </tr>`).join('') || '<tr><td colspan="6" class="muted">Aucun trajet</td></tr>';
+
+      tbody.querySelectorAll('[data-deactivate]').forEach(btn => {
+        btn.addEventListener('click', () => MB.deactivateTrip(btn.dataset.deactivate).then(loadTrips));
+      });
+
+      const driverSelect = document.getElementById('t-driver');
+      driverSelect.innerHTML = '<option value="">— Sélectionner —</option>' +
+        drivers.map(d => `<option value="${d.name}">${d.name}${d.usual_route ? ' (' + d.usual_route + ')' : ''}</option>`).join('');
+    });
+  }
+  function loadDestinationImages() {
+    MB.fetchDestinationImages().then(images => {
+      const grid = document.getElementById('t-image-grid');
+      grid.innerHTML = images.map(img => `
+        <div class="image-pick" data-url="${img.url}"><img src="${img.url}" alt="${img.name}"><span>${img.name}</span></div>
+      `).join('');
+      grid.querySelectorAll('.image-pick').forEach(el => {
+        el.addEventListener('click', () => {
+          grid.querySelectorAll('.image-pick').forEach(x => x.classList.remove('selected'));
+          el.classList.add('selected');
+          selectedImageUrl = el.dataset.url;
+          document.getElementById('t-image-url').value = selectedImageUrl;
+        });
+      });
+    });
+  }
+  document.getElementById('trip-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('departure', document.getElementById('t-departure').value.trim());
+    fd.append('destination', document.getElementById('t-destination').value.trim());
+    fd.append('departure_time', document.getElementById('t-time').value);
+    fd.append('duration', document.getElementById('t-duration').value.trim());
+    fd.append('driver', document.getElementById('t-driver').value);
+    fd.append('price', parseFloat(document.getElementById('t-price').value));
+    if (selectedImageUrl) fd.append('image_url', selectedImageUrl);
+    const photoInput = document.getElementById('t-photo');
+    if (photoInput.files[0]) fd.append('photo', photoInput.files[0]);
+    MB.createTrip(fd).then(() => {
+      e.target.reset();
+      selectedImageUrl = '';
+      document.querySelectorAll('#t-image-grid .image-pick').forEach(x => x.classList.remove('selected'));
+      loadTrips();
+    }).catch(err => alert(err.message));
+  });
+  loadTrips();
+  loadDestinationImages();
+
+  // ---------- Onglet Chauffeurs ----------
+  function loadDrivers() {
+    MB.fetchDrivers().then(drivers => {
+      document.getElementById('drivers-table-body').innerHTML = drivers.map(d => `
+        <tr>
+          <td>${d.photo_url ? `<img class="driver-photo" src="${d.photo_url}" alt="">` : `<div class="driver-photo-placeholder">${d.name.charAt(0)}</div>`}</td>
+          <td>${d.name}</td><td>${d.usual_route || '—'}</td><td>${d.trips_completed}</td><td>${d.rating} ⭐</td>
+        </tr>`).join('') || '<tr><td colspan="5" class="muted">Aucun chauffeur</td></tr>';
+    });
+  }
+  document.getElementById('driver-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('name', document.getElementById('d-name').value.trim());
+    fd.append('phone', document.getElementById('d-phone').value.trim());
+    fd.append('usual_route', document.getElementById('d-route').value.trim());
+    const photoInput = document.getElementById('d-photo');
+    if (photoInput.files[0]) fd.append('photo', photoInput.files[0]);
+    MB.createDriver(fd).then(() => {
+      e.target.reset();
+      loadDrivers();
+      loadTrips();
+    }).catch(err => alert(err.message));
+  });
+  loadDrivers();
+
+  // ---------- Onglet Clients ----------
+  function loadCustomers() {
+    MB.fetchCustomers().then(customers => {
+      document.getElementById('customers-table-body').innerHTML = customers.map(c => `
+        <tr><td>${c.name}</td><td>${c.phone}</td><td>${new Date(c.created_at).toLocaleDateString('fr-FR')}</td></tr>
+      `).join('') || '<tr><td colspan="3" class="muted">Aucun client enregistré</td></tr>';
+    });
+  }
+  document.getElementById('customer-form').addEventListener('submit', e => {
+    e.preventDefault();
+    MB.createCustomer({
+      name: document.getElementById('c-name').value.trim(),
+      phone: document.getElementById('c-phone').value.trim()
+    }).then(() => {
+      e.target.reset();
+      loadCustomers();
+    }).catch(err => alert(err.message));
+  });
+  loadCustomers();
+</script>
+</body>
+</html>

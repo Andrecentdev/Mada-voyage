@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choix des sièges — MADA-VOYAGE</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/vendor/bootstrap-5.3.8-dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome-free-6.5.1-web/css/all.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-bg">
+
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand"><img src="/images/logo.svg" alt="" class="brand-logo" width="34" height="34">MADA<span class="dot">-</span>VOYAGE</a>
+    <div class="nav-links">
+      <a href="/">Accueil</a>
+      <a href="/reservation">Réserver</a>
+      <a href="/sieges">Sièges</a>
+      <a href="/paiement">Paiement</a>
+      <a href="/confirmation">Confirmation</a>
+      <a href="/mes-reservations">Mes réservations</a>
+      <a href="/admin-login">Admin</a>
+    </div>
+    <div class="nav-tools">
+      <select class="lang-select" id="mb-lang-select">
+        <option value="fr">FR</option>
+        <option value="mg">MG</option>
+        <option value="en">EN</option>
+      </select>
+      <button class="icon-btn" id="mb-theme-toggle" title="Mode sombre">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<section>
+  <div class="container" style="max-width:900px;">
+    <h1>Choisissez vos sièges</h1>
+    <p class="muted" id="seat-instructions"></p>
+    <div style="display:grid; grid-template-columns:340px 1fr; gap:30px;" id="seat-layout-wrap">
+      <div class="bus-plan">
+        <div class="bus-driver">
+          <span id="driver-name">Chauffeur</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </div>
+        <div class="seat-grid" id="seat-grid"></div>
+        <div class="legend">
+          <span><i style="background:var(--vert-clair)"></i> Disponible</span>
+          <span><i style="background:var(--laterite)"></i> Sélectionné</span>
+          <span><i style="background:#c65b3f"></i> Occupé</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="mt-0">Résumé</h3>
+        <p>Trajet : <strong id="sum-route"></strong></p>
+        <p>Places à choisir : <strong id="sum-count"></strong></p>
+        <p>Sièges sélectionnés : <strong id="sum-seats">Aucun</strong></p>
+        <button class="btn btn-primary btn-block mt-2" id="confirm-seats-btn" disabled>Confirmer et payer</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="mb-footer"></div>
+
+<script src="/vendor/bootstrap-5.3.8-dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  MB.initCommon();
+
+  const draft = MB.get(MB.KEYS.DRAFT, null);
+  if (!draft) { location.href = '/reservation'; }
+
+  // Affiche un message d'erreur si le chargement échoue (ex : DB non connectée sur Render)
+  function showLoadError(msg) {
+    document.getElementById('seat-layout-wrap').innerHTML =
+      `<div class="card" style="color:#c0392b;padding:24px;">
+        <strong>⚠️ Erreur de chargement</strong><br>${msg}<br>
+        <a href="/reservation" class="btn btn-primary mt-2" style="display:inline-block;margin-top:12px;">Retour à la réservation</a>
+       </div>`;
+  }
+
+  MB.fetchTrips().catch(err => {
+    showLoadError('Impossible de contacter le serveur. Vérifiez que DATABASE_URL est bien configuré sur Render. (' + err.message + ')');
+    return null;
+  }).then(trips => {
+    if (!trips) return;
+    const trip = trips.find(t => t.id === draft.tripId);
+    if (!trip) { location.href = '/reservation'; return; }
+
+    document.getElementById('sum-route').textContent = `${trip.departure} → ${trip.destination}`;
+    document.getElementById('sum-count').textContent = draft.count;
+    document.getElementById('driver-name').textContent = `Chauffeur : ${trip.driver}`;
+    document.getElementById('seat-instructions').textContent =
+      `Sélectionnez exactement ${draft.count} siège(s).`;
+
+    let selected = MB.get(MB.KEYS.SEATS, []);
+
+    MB.fetchOccupiedSeats(draft.tripId).catch(() => []).then(occupied => {
+      // Plan du bus : 2 sièges avant (E1/E2, près du chauffeur) puis 5 rangées
+      // de 4 sièges (A/B | allée | C/D). Numérotation interne (1-22) inchangée
+      // côté serveur ; MB.seatLabel() fournit l'étiquette affichée.
+      const seatLabel = MB.seatLabel;
+
+      function renderSeats() {
+        const grid = document.getElementById('seat-grid');
+        grid.innerHTML = '';
+
+        // Rangée avant : icône chauffeur à gauche, sièges E1/E2 à droite
+        const frontRow = document.createElement('div');
+        frontRow.className = 'seat-row front-row';
+        const driverIcon = document.createElement('div');
+        driverIcon.className = 'driver-wheel';
+        driverIcon.title = 'Chauffeur';
+        driverIcon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/></svg>';
+        const frontSpacer = document.createElement('div');
+        frontSpacer.className = 'front-spacer';
+        frontRow.appendChild(driverIcon);
+        frontRow.appendChild(frontSpacer);
+        frontRow.appendChild(makeSeatButton(1));
+        frontRow.appendChild(makeSeatButton(2));
+        grid.appendChild(frontRow);
+
+        let seatNum = 3;
+        for (let row = 0; row < 5; row++) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'seat-row';
+          for (let col = 0; col < 4; col++) {
+            if (col === 2) {
+              const aisle = document.createElement('div');
+              aisle.className = 'aisle';
+              rowEl.appendChild(aisle);
+            }
+            rowEl.appendChild(makeSeatButton(seatNum));
+            seatNum++;
+          }
+          grid.appendChild(rowEl);
+        }
+
+        function makeSeatButton(num) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'seat';
+          btn.textContent = seatLabel(num);
+          btn.dataset.seat = num;
+          if (occupied.includes(num)) {
+            btn.classList.add('occupied');
+            btn.disabled = true;
+            btn.title = 'Siège occupé';
+          } else if (selected.includes(num)) {
+            btn.classList.add('selected');
+          }
+          btn.addEventListener('click', () => toggleSeat(num, btn));
+          return btn;
+        }
+
+        function toggleSeat(num, btn) {
+          if (selected.includes(num)) {
+            selected = selected.filter(s => s !== num);
+            btn.classList.remove('selected');
+          } else {
+            if (selected.length >= draft.count) {
+              alert(`Maximum ${draft.count} siège(s).`);
+              return;
+            }
+            selected.push(num);
+            btn.classList.add('selected');
+          }
+          MB.set(MB.KEYS.SEATS, selected);
+          updateSummary();
+        }
+
+        function updateSummary() {
+          document.getElementById('sum-seats').textContent = selected.length ? selected.map(seatLabel).join(', ') : 'Aucun';
+          document.getElementById('confirm-seats-btn').disabled = selected.length !== draft.count;
+        }
+
+        updateSummary();
+      }
+
+      renderSeats();
+    });
+
+    document.getElementById('confirm-seats-btn').addEventListener('click', () => {
+      if (selected.length !== draft.count) return;
+      location.href = '/paiement';
+    });
+  });
+
+  const currentPath = window.location.pathname;
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    if (link.getAttribute('href') === currentPath) link.classList.add('active');
+  });
+</script>
+</body>
+</html>
