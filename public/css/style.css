@@ -590,4 +590,124 @@ th{ color:var(--vert-fonce); font-family:var(--serif); font-weight:600; }
   .admin-side .brand{ margin:0 8px 0 0; }
   .admin-side a{ white-space:nowrap; margin-bottom:0; }
   .hero-road{ display:none; }
+
+  /* ========== RESPONSIVE POUR MOBILE ========== */
+
+@media (max-width: 768px) {
+    /* Navbar */
+    .navbar .container {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+    }
+    .nav-links a {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+    .nav-tools {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Hero */
+    .hero h1 {
+        font-size: 1.6rem !important;
+    }
+    .hero p.lead {
+        font-size: 0.9rem;
+    }
+    .hero-road {
+        display: none;
+    }
+    
+    /* Trips grid - 1 seule colonne */
+    .trips-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Why choose - 1 seule colonne */
+    .why-choose .row {
+        flex-direction: column;
+    }
+    .why-card {
+        margin-bottom: 20px;
+    }
+    
+    /* Testimonials - 1 seule colonne */
+    .testimonials .row {
+        flex-direction: column;
+    }
+    .testimonial-card {
+        margin-bottom: 20px;
+    }
+    
+    /* Footer */
+    .footer .row {
+        flex-direction: column;
+        text-align: center;
+    }
+    .footer .social-icons {
+        justify-content: center;
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .footer .bottom-bar {
+        font-size: 0.7rem;
+    }
+    .footer .bottom-bar span {
+        display: block;
+        margin: 5px 0;
+    }
+    
+    /* Formulaires */
+    .form-row {
+        grid-template-columns: 1fr !important;
+    }
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    /* Cartes */
+    .trip-row-compact {
+        flex-wrap: wrap;
+    }
+    .trip-row-price {
+        order: 3;
+    }
+    .trip-row-info {
+        flex: 1 1 100%;
+    }
+    
+    /* Contact */
+    .footer .list-unstyled li {
+        word-break: break-word;
+    }
+}
+
+/* Pour les très petits écrans (moins de 480px) */
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 1.2rem !important;
+    }
+    .hero-eyebrow {
+        font-size: 0.6rem;
+        padding: 4px 10px;
+    }
+    .btn {
+        font-size: 0.8rem;
+        padding: 8px 16px;
+    }
+    .trip-price {
+        font-size: 1.2rem;
+    }
+    .brand {
+        font-size: 1.1rem;
+    }
+    .container {
+        padding: 0 12px;
+    }
 }
